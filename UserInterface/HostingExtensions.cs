@@ -3,14 +3,25 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.AspNetCore.ResponseCompression;
-using System.IO.Compression;
+ 
 
 
 public static class HostingExtensions
 {
-    public static IServiceCollection AddCustomAuthentication(this IServiceCollection services)
+    public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
+        var authConfig = configuration.GetSection("Authentication");
+        var authority = authConfig.GetValue<string>("Authority");
+        var clientId = authConfig.GetValue<string>("ClientId");
+        var clientSecret = authConfig.GetValue<string>("ClientSecret");
+        var responseType = authConfig.GetValue<string>("ResponseType");
+        var signOutCallbackPath = authConfig.GetValue<string>("SignOutCallbackPath");
+
+        var jwtBearerConfig = authConfig.GetSection("JwtBearer");
+        var audience = jwtBearerConfig.GetValue<string>("Audience");
+        var requireHttpsMetadata = jwtBearerConfig.GetValue<bool>("RequireHttpsMetadata");
+        var issuerSigningKey = jwtBearerConfig.GetValue<string>("IssuerSigningKey");
+
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -28,16 +39,17 @@ public static class HostingExtensions
         })
         .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
         {
-            options.Authority = "https://localhost:5001"; // Your IdentityServer URL
-            options.ClientId = "Sample.UI";
-            options.ClientSecret = "K8T1L7J9V0D3R+4W6Fz5X2Q8B1N7P3C4G0A9J7R8H6="; // Replace with actual secret
-            options.ResponseType = "code";
+            options.Authority = authority;
+            options.ClientId = clientId;
+            options.ClientSecret = clientSecret;
+            options.ResponseType = responseType!;
             options.SaveTokens = true;
             options.GetClaimsFromUserInfoEndpoint = true;
 
-            options.Scope.Add("openid");
-            options.Scope.Add("profile");
-            options.Scope.Add("scope1");
+            foreach (var scope in authConfig.GetSection("Scopes").Get<List<string>>()!)
+            {
+                options.Scope.Add(scope);
+            }
 
             options.TokenValidationParameters = new TokenValidationParameters
             {
@@ -46,14 +58,14 @@ public static class HostingExtensions
             };
 
             // Set the URI for sign-out
-            options.SignedOutCallbackPath = "/signout-callback";
+            options.SignedOutCallbackPath = signOutCallbackPath;
             options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         })
         .AddJwtBearer(options =>
         {
-            options.Authority = "https://localhost:5001"; // Your IdentityServer URL
-            options.Audience = "api1"; // The API resource you want to access
-            options.RequireHttpsMetadata = false; // Set to true in production
+            options.Authority = authority;
+            options.Audience = audience;
+            options.RequireHttpsMetadata = requireHttpsMetadata;
 
             options.TokenValidationParameters = new TokenValidationParameters
             {
@@ -61,15 +73,14 @@ public static class HostingExtensions
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = "https://localhost:5001",
-                ValidAudience = "api1",
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("your-secret-key-here")) // Use the secret key
+                ValidIssuer = authority,
+                ValidAudience = audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(issuerSigningKey!)) // Use the secret key
             };
         });
 
         return services;
     }
-
     public static IServiceCollection AddCustomAuthorization(this IServiceCollection services)
     {
         services.AddAuthorization(options =>

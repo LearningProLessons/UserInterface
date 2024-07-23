@@ -4,7 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 
 // Add custom authentication and authorization services
-builder.Services.AddCustomAuthentication();
+builder.Services.AddCustomAuthentication(builder.Configuration);
 builder.Services.AddCustomAuthorization();
 var app = builder.Build();
 
