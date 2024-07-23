@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +7,7 @@ namespace UserInterface.Pages;
 
 public class SignInModel : PageModel
 {
-    public async Task<IActionResult> OnGet()
+    public IActionResult OnGet()
     {
         // Initiate sign-in
         var props = new AuthenticationProperties
