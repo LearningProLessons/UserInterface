@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +35,25 @@ builder.Services.AddAuthentication(options =>
         NameClaimType = "name",
         RoleClaimType = "role"
     };
+})
+.AddJwtBearer(options =>
+{
+    options.Authority = "https://localhost:5001"; // Your IdentityServer URL
+    options.Audience = "api1"; // The API resource you want to access
+    options.RequireHttpsMetadata = false; // Set to true in production
+
+    // Example of a symmetric secret key
+    var key = Encoding.ASCII.GetBytes("ThisIsASecretKeyForDevelopmentOnly!");
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key) // Use the secret key
+    };
+    // Configure sign-out options
+    options.ForwardSignOut = "https://localhost:7076/signout-callback-oidc";
 });
 
 // Configure authorization
