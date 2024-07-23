@@ -10,10 +10,9 @@ public class LogoutModel : PageModel
 {
     public IActionResult OnGet()
     {
-        // Initiate sign-out
         var props = new AuthenticationProperties
         {
-            RedirectUri = Url.Action("SignOutCallback", "Account") // Set the redirect URI here
+            RedirectUri = Url.Page("/SignOutCallback") // This should be the URI defined in PostLogoutRedirectUris
         };
 
         return SignOut(
