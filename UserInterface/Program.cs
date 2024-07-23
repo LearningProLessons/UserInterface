@@ -17,10 +17,8 @@ builder.Services.AddAuthentication(options =>
 })
 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
 {
-    // Example settings
-    options.Cookie.HttpOnly = false;
-   // options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Ensure this is set correctly
-
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Ensure this is set to Always in production
     options.Events.OnRedirectToAccessDenied = context =>
     {
         context.Response.Redirect("/AccessDenied");
@@ -47,8 +45,8 @@ builder.Services.AddAuthentication(options =>
     };
 
     // Set the URI for sign-out
-    options.SignedOutRedirectUri = "https://localhost:7076/signout-callback-oidc";
-
+    options.SignedOutCallbackPath = "/signout-callback";
+    options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
@@ -56,14 +54,15 @@ builder.Services.AddAuthentication(options =>
     options.Audience = "api1"; // The API resource you want to access
     options.RequireHttpsMetadata = false; // Set to true in production
 
-    var key = Encoding.ASCII.GetBytes("ThisIsASecretKeyForDevelopmentOnly!");
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key) // Use the secret key
+        ValidIssuer = "https://localhost:5001",
+        ValidAudience = "api1",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("your-secret-key-here")) // Use the secret key
     };
 });
 
