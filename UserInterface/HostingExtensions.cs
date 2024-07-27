@@ -1,83 +1,41 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
- 
+
 
 
 public static class HostingExtensions
 {
-    public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddCustomAuthentication(this IServiceCollection services)
     {
-        var authConfig = configuration.GetSection("Authentication");
-        var authority = authConfig.GetValue<string>("Authority");
-        var clientId = authConfig.GetValue<string>("ClientId");
-        var clientSecret = authConfig.GetValue<string>("ClientSecret");
-        var responseType = authConfig.GetValue<string>("ResponseType");
-        var signOutCallbackPath = authConfig.GetValue<string>("SignOutCallbackPath");
-
-        var jwtBearerConfig = authConfig.GetSection("JwtBearer");
-        var audience = jwtBearerConfig.GetValue<string>("Audience");
-        var requireHttpsMetadata = jwtBearerConfig.GetValue<bool>("RequireHttpsMetadata");
-        var issuerSigningKey = jwtBearerConfig.GetValue<string>("IssuerSigningKey");
-
+        services.AddHttpClient();
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
         })
-        .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-        {
-            options.Cookie.HttpOnly = true;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Ensure this is set to Always in production
-            options.Events.OnRedirectToAccessDenied = context =>
-            {
-                context.Response.Redirect("/AccessDenied");
-                return Task.CompletedTask;
-            };
-        })
-        .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
-        {
-            options.Authority = authority;
-            options.ClientId = clientId;
-            options.ClientSecret = clientSecret;
-            options.ResponseType = responseType!;
-            options.SaveTokens = true;
-            options.GetClaimsFromUserInfoEndpoint = true;
-
-            foreach (var scope in authConfig.GetSection("Scopes").Get<List<string>>()!)
-            {
-                options.Scope.Add(scope);
-            }
-
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                NameClaimType = "name",
-                RoleClaimType = "role"
-            };
-
-            // Set the URI for sign-out
-            options.SignedOutCallbackPath = signOutCallbackPath;
-            options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.Authority = authority;
-            options.Audience = audience;
-            options.RequireHttpsMetadata = requireHttpsMetadata;
-
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = authority,
-                ValidAudience = audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(issuerSigningKey!)) // Use the secret key
-            };
-        });
+      .AddCookie()
+      .AddOpenIdConnect(options =>
+      {
+          options.Authority = "https://localhost:5001"; // Identity Server URL
+          options.ClientId = "SappPlusCompanyUIClient";
+          options.ClientSecret = "K8T1L7J9V0D3R+4W6Fz5X2Q8B1N7P3C4G0A9J7R8H6=";
+          options.ResponseType = "code";
+          options.SaveTokens = true;
+          options.Scope.Add("openid");
+          options.Scope.Add("profile");
+          options.Scope.Add("scope_sapplus");
+          options.GetClaimsFromUserInfoEndpoint = true;
+          options.Events = new OpenIdConnectEvents
+          {
+              OnRedirectToIdentityProvider = context =>
+              {
+                  var requestedScopes = context.ProtocolMessage.Scope;
+                  Console.WriteLine($"Requested Scopes: {requestedScopes}");
+                  return Task.CompletedTask;
+              }
+          };
+      });
 
         return services;
     }

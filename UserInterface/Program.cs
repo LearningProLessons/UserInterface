@@ -3,8 +3,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 
+// Register IHttpClientFactory
+builder.Services.AddHttpClient();
+
+
 // Add custom authentication and authorization services
-builder.Services.AddCustomAuthentication(builder.Configuration);
+builder.Services.AddCustomAuthentication();
 builder.Services.AddCustomAuthorization();
 var app = builder.Build();
 

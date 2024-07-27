@@ -1,20 +1,42 @@
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Net.Http.Headers;
 
-namespace UserInterface.Pages
+
+[Authorize]
+public class IndexModel : PageModel
 {
-    public class IndexModel : PageModel
-    {
-        private readonly ILogger<IndexModel> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-        public IndexModel(ILogger<IndexModel> logger)
+    public IndexModel(IHttpClientFactory httpClientFactory)
+    {
+        _httpClientFactory = httpClientFactory;
+    }
+
+    public string ReasonList { get; private set; }
+
+    public async Task OnGetAsync()
+    {
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+
+        if (string.IsNullOrEmpty(accessToken))
         {
-            _logger = logger;
+            throw new UnauthorizedAccessException("Access token is missing.");
         }
 
-        public void OnGet()
-        {
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
+        var response = await client.GetAsync("https://localhost:58862/api/BasicInfo/GetReasonList");
+
+        if (response.IsSuccessStatusCode)
+        {
+            ReasonList = await response.Content.ReadAsStringAsync();
+        }
+        else
+        {
+            ReasonList = $"Error: {response.ReasonPhrase}";
         }
     }
 }
