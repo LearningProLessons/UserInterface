@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using UserInterface;
 
 
@@ -19,7 +21,16 @@ public static class HostingExtensions
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
         })
-        .AddCookie()
+        .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+        {
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Ensure this is set to Always in production
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                context.Response.Redirect("/AccessDenied");
+                return Task.CompletedTask;
+            };
+        })
         .AddOpenIdConnect(options =>
         {
             options.Authority = authSettings.Authority;
@@ -33,7 +44,32 @@ public static class HostingExtensions
             {
                 options.Scope.Add(scope);
             }
-        });
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = "name",
+                RoleClaimType = "role"
+            };
+
+            // Set the URI for sign-out
+            options.SignedOutCallbackPath = authSettings.SignOutCallbackPath;
+            options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        }).AddJwtBearer(options =>
+        {
+            options.Authority = authSettings.Authority;
+            options.Audience = authSettings.JwtBearer.Audience;
+            options.RequireHttpsMetadata = authSettings.JwtBearer.RequireHttpsMetadata;
+
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = authSettings.Authority,
+                ValidAudience = authSettings.JwtBearer.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(authSettings.JwtBearer.IssuerSigningKey!)) // Use the secret key
+            };
+        }); 
 
         return services;
     }
