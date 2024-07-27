@@ -1,6 +1,7 @@
 ﻿using System.Text;
+using UserInterface.Models.Common;
 
-namespace UserInterface.Services;    
+namespace UserInterface.Services;
 
 public class ApiService
 {
@@ -23,18 +24,78 @@ public class ApiService
         return client;
     }
 
-    public async Task<string> GetAsync(string endpoint)
+    private string BuildUrl(string endpoint)
     {
-        var client = await CreateAuthorizedClientAsync();
         var baseUrl = _configuration["ApiBaseUrl"];
-
-        // Use StringBuilder to construct the URL
         var urlBuilder = new StringBuilder(baseUrl);
         urlBuilder.Append(endpoint);
-
-        var response = await client.GetAsync(urlBuilder.ToString());
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return urlBuilder.ToString();
     }
 
+    public async Task<ApiResponse<T>> GetAsync<T>(string endpoint) where T : class
+    {
+        try
+        {
+            var client = await CreateAuthorizedClientAsync();
+            var url = BuildUrl(endpoint);
+            var response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            var data = await response.Content.ReadFromJsonAsync<T>();
+            return new ApiResponse<T> { Success = true, Data = data };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new ApiResponse<T> { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<ApiResponse<T>> PostAsync<T>(string endpoint, T data)
+    {
+        try
+        {
+            var client = await CreateAuthorizedClientAsync();
+            var url = BuildUrl(endpoint);
+            var response = await client.PostAsJsonAsync(url, data);
+            response.EnsureSuccessStatusCode();
+            var responseData = await response.Content.ReadFromJsonAsync<T>();
+            return new ApiResponse<T> { Success = true, Data = responseData };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new ApiResponse<T> { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<ApiResponse<T>> PutAsync<T>(string endpoint, T data)
+    {
+        try
+        {
+            var client = await CreateAuthorizedClientAsync();
+            var url = BuildUrl(endpoint);
+            var response = await client.PutAsJsonAsync(url, data);
+            response.EnsureSuccessStatusCode();
+            var responseData = await response.Content.ReadFromJsonAsync<T>();
+            return new ApiResponse<T> { Success = true, Data = responseData };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new ApiResponse<T> { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<ApiResponse<string>> DeleteAsync(string endpoint)
+    {
+        try
+        {
+            var client = await CreateAuthorizedClientAsync();
+            var url = BuildUrl(endpoint);
+            var response = await client.DeleteAsync(url);
+            response.EnsureSuccessStatusCode();
+            return new ApiResponse<string> { Success = true, Data = "Deleted successfully" };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new ApiResponse<string> { Success = false, ErrorMessage = ex.Message };
+        }
+    }
 }

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using UserInterface.Services;
+using UserInterface.Models.Reasons;
 
- 
 [Authorize]
 public class IndexModel : BasePageModel
 {
@@ -13,17 +13,19 @@ public class IndexModel : BasePageModel
         _apiService = apiService;
     }
 
-    public string ReasonList { get; private set; }
+    public List<ReasonResponse> ReasonList { get; private set; }
+    public string ErrorMessage { get; private set; } // Add an ErrorMessage property to handle errors
 
     public async Task OnGetAsync()
     {
-        try
+        var response = await _apiService.GetAsync<List<ReasonResponse>>("/api/BasicInfo/GetReasonList");
+        if (response.Success)
         {
-           ReasonList = await _apiService.GetAsync("/api/BasicInfo/GetReasonList");
+            ReasonList = response.Data; // Assign the data to the Reasons property
         }
-        catch (HttpRequestException ex)
+        else
         {
-            ReasonList = $"Error: {ex.Message}";
+            ErrorMessage = response.ErrorMessage; // Handle errors and assign the error message
         }
     }
 }
