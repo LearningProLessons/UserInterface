@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
-using UserInterface.Services.Reasons;
 using UserInterface.Services;
 
+ 
 [Authorize]
 public class IndexModel : BasePageModel
 {
-    public IndexModel(IHttpClientFactory httpClientFactory, ITokenService tokenService)
+    private readonly ApiService _apiService;
+
+    public IndexModel(IHttpClientFactory httpClientFactory, ITokenService tokenService, ApiService apiService)
         : base(httpClientFactory, tokenService)
     {
+        _apiService = apiService;
     }
 
     public string ReasonList { get; private set; }
@@ -16,22 +19,11 @@ public class IndexModel : BasePageModel
     {
         try
         {
-            var client = await CreateAuthorizedClientAsync(); // Await to get HttpClient instance
-            var response = await client.GetAsync("https://localhost:58862/api/BasicInfo/GetReasonList");
-
-            if (response.IsSuccessStatusCode)
-            {
-                ReasonList = await response.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                ReasonList = $"Error: {response.ReasonPhrase}";
-            }
+           ReasonList = await _apiService.GetAsync("/api/BasicInfo/GetReasonList");
         }
-        catch (UnauthorizedAccessException ex)
+        catch (HttpRequestException ex)
         {
             ReasonList = $"Error: {ex.Message}";
         }
     }
-
 }

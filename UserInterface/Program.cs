@@ -1,19 +1,19 @@
 using UserInterface.Extensions;
 using UserInterface.Services;
-using UserInterface.Services.Reasons;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorPages();
 
-// Register IHttpClientFactory
+// Program.cs
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<ApiService>(); // Change to Scoped
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IReasonService, ReasonService>();
+builder.Services.AddRazorPages();
 builder.Services.AddCustomAuthentication();
 builder.Services.AddCustomAuthorization();
+
 
 var app = builder.Build();
 
