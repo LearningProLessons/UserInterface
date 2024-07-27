@@ -1,44 +1,43 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
+using UserInterface;
 
 
 
 public static class HostingExtensions
 {
+
     public static IServiceCollection AddCustomAuthentication(this IServiceCollection services)
     {
+        var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        var authSettings = configuration.GetSection("Authentication").Get<AuthenticationSettings>()!;
+
         services.AddHttpClient();
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
         })
-      .AddCookie()
-      .AddOpenIdConnect(options =>
-      {
-          options.Authority = "https://localhost:5001"; // Identity Server URL
-          options.ClientId = "SappPlusCompanyUIClient";
-          options.ClientSecret = "K8T1L7J9V0D3R+4W6Fz5X2Q8B1N7P3C4G0A9J7R8H6=";
-          options.ResponseType = "code";
-          options.SaveTokens = true;
-          options.Scope.Add("openid");
-          options.Scope.Add("profile");
-          options.Scope.Add("scope_sapplus");
-          options.GetClaimsFromUserInfoEndpoint = true;
-          options.Events = new OpenIdConnectEvents
-          {
-              OnRedirectToIdentityProvider = context =>
-              {
-                  var requestedScopes = context.ProtocolMessage.Scope;
-                  Console.WriteLine($"Requested Scopes: {requestedScopes}");
-                  return Task.CompletedTask;
-              }
-          };
-      });
+        .AddCookie()
+        .AddOpenIdConnect(options =>
+        {
+            options.Authority = authSettings.Authority;
+            options.ClientId = authSettings.ClientId;
+            options.ClientSecret = authSettings.ClientSecret;
+            options.ResponseType = authSettings.ResponseType;
+            options.SaveTokens = true;
+            options.GetClaimsFromUserInfoEndpoint = true;
+
+            foreach (var scope in authSettings.Scopes)
+            {
+                options.Scope.Add(scope);
+            }
+        });
 
         return services;
     }
+
     public static IServiceCollection AddCustomAuthorization(this IServiceCollection services)
     {
         services.AddAuthorization(options =>
