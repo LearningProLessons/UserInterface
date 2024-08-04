@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace UserInterface.Pages;
 
-[Authorize(Policy = "RequireAdminRole")]
+[Authorize(Policy = "AdminPolicy")]
 public class PrivacyModel : PageModel
 {
     private readonly ILogger<PrivacyModel> _logger;
@@ -12,8 +12,11 @@ public class PrivacyModel : PageModel
     {
         _logger = logger;
     }
+    public string Message { get; set; }
 
+    // This method is accessible for users with the UserPolicy
     public void OnGet()
     {
+        Message = "Welcome to the Privacy Page!";
     }
 }

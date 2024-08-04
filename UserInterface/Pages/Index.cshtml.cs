@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using UserInterface.Services;
 using UserInterface.Models.Reasons;
 
-[Authorize]
 public class IndexModel : BasePageModel
 {
     private readonly ApiService _apiService;

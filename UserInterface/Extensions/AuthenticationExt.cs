@@ -76,11 +76,13 @@ public static class AuthenticationExt
     {
         services.AddAuthorization(options =>
         {
-            options.AddPolicy("RequireAdminRole", policy =>
-                policy.RequireRole("admin"));
-            options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
+
+            // Define policies based on scopes
+            options.AddPolicy("AdminPolicy", policy =>
+                policy.RequireClaim("scope", "all.read", "all.write"));
+
+            options.AddPolicy("UserPolicy", policy =>
+                policy.RequireClaim("scope", "order.read", "order.write"));
         });
 
         return services;

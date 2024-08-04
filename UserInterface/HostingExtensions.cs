@@ -2,21 +2,17 @@
 {
     public static IApplicationBuilder UseCustomPipeline(this IApplicationBuilder app)
     {
-        // No direct access to Environment here
-        // Moving environment check to Program.cs or Startup.cs
+        var isDevEnvironment = app.ApplicationServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
 
-        if (app.ApplicationServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        if (isDevEnvironment)
         {
-            app.UseExceptionHandler("/Error");
-            app.UseHsts();
+            app.UseDeveloperExceptionPage();
         }
         else
         {
-            // In production
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-
         app.UseHttpsRedirection();
         app.UseStaticFiles();
         app.UseRouting();
