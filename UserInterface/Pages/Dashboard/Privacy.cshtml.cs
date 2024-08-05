@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Security.Claims;
 
 namespace UserInterface.Pages;
 
-[Authorize(Policy = "AdminPolicy")]
+[Authorize(Roles = "admin")] // Only allow access to users with the "admin" role
 public class PrivacyModel : PageModel
 {
     private readonly ILogger<PrivacyModel> _logger;
@@ -12,11 +15,27 @@ public class PrivacyModel : PageModel
     {
         _logger = logger;
     }
+
     public string Message { get; set; }
 
-    // This method is accessible for users with the UserPolicy
     public void OnGet()
     {
-        Message = "Welcome to the Privacy Page!";
+        // Retrieve the user's claims
+        var userClaims = User.Claims.ToList();
+
+        // Check if the user has any specific claims or roles to display
+        if (User.Identity.IsAuthenticated)
+        {
+            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            var organizationIdClaim = User.FindFirst("organization_id")?.Value;
+
+            // Build a message for display
+            Message = $"Welcome! You are authenticated as an {string.Join(", ", roles)}. " +
+                      (organizationIdClaim != null ? $"Your organization ID is: {organizationIdClaim}." : "");
+        }
+        else
+        {
+            Message = "You are not authenticated.";
+        }
     }
 }
