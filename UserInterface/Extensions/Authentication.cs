@@ -1,20 +1,19 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
+using System.Text;
+using UserInterface.Configs;
 
 
 
 namespace UserInterface.Extensions;
-public static class Authentication
+public static class AuthenticationExt
 {
-
     public static IServiceCollection AddCustomAuthentication(this IServiceCollection services)
     {
         var configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
-        var authSettings = configuration.GetSection("Authentication").Get<AuthenticationSettings>()!;
+        var authSettings = configuration.Get<AppSettings>()!.Authentication;
 
         services.AddHttpClient();
         services.AddAuthentication(options =>
@@ -25,7 +24,7 @@ public static class Authentication
         .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
         {
             options.Cookie.HttpOnly = true;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Ensure this is set to Always in production
             options.Events.OnRedirectToAccessDenied = context =>
             {
                 context.Response.Redirect("/AccessDenied");
@@ -34,6 +33,7 @@ public static class Authentication
         })
         .AddOpenIdConnect(options =>
         {
+            options.UsePkce = true;
             options.Authority = authSettings.Authority;
             options.ClientId = authSettings.ClientId;
             options.ClientSecret = authSettings.ClientSecret;
@@ -41,30 +41,37 @@ public static class Authentication
             options.SaveTokens = true;
             options.GetClaimsFromUserInfoEndpoint = true;
 
-            // Add scopes from configuration
             foreach (var scope in authSettings.Scopes)
             {
                 options.Scope.Add(scope);
             }
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = "name",
+                RoleClaimType = "role"
+            };
 
-            options.UsePkce = true;
-
-            // Map claims from the IDP to the authentication properties
+            // Set the URI for sign-out
+            options.SignedOutCallbackPath = authSettings.SignOutCallbackPath;
+            options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             options.ClaimActions.MapJsonKey("role", "role"); // Map role claim
             options.ClaimActions.MapJsonKey("name", "name"); // Map name claim
-        });
-
-        services.AddAuthorization(options =>
+        }).AddJwtBearer(options =>
         {
-            options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("admin"));
-            options.AddPolicy("RequireEmployeeRole", policy => policy.RequireRole("employee"));
-            // Add other role policies as needed
-        });
+            options.Authority = authSettings.Authority;
+            options.Audience = authSettings.JwtBearer.Audience;
+            options.RequireHttpsMetadata = authSettings.JwtBearer.RequireHttpsMetadata;
 
-        services.ConfigureApplicationCookie(options =>
-        {
-            options.LoginPath = "/SignIn"; // Redirect to login page if unauthenticated
-            options.AccessDeniedPath = "/AccessDenied"; // Redirect to access denied page
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = authSettings.Authority,
+                ValidAudience = authSettings.JwtBearer.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(authSettings.JwtBearer.IssuerSigningKey!)) // Use the secret key
+            };
         });
 
         return services;
@@ -72,11 +79,15 @@ public static class Authentication
 
     public static IServiceCollection AddCustomAuthorization(this IServiceCollection services)
     {
-        
-        // services.AddSingleton<IAuthorizationHandler, AdminRoleAndClaimHandler>(); // Register the handler
-
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminRolesPolicy", policy =>
+                   policy.RequireRole("PegahAdmin", "MihanAdmin"));
+        });
 
         return services;
     }
 
 }
+
+

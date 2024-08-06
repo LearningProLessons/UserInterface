@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Security.Claims;
 
 namespace UserInterface.Pages;
 
-[Authorize(Roles = "admin")] // Only allow access to users with the "admin" role
+[Authorize(Policy = "AdminRolesPolicy")]
 public class PrivacyModel : PageModel
 {
     private readonly ILogger<PrivacyModel> _logger;
@@ -23,11 +21,11 @@ public class PrivacyModel : PageModel
         // Retrieve the user's claims
         var userClaims = User.Claims.ToList();
 
-        // Check if the user has any specific claims or roles to display
+        // Check if the user is authenticated
         if (User.Identity.IsAuthenticated)
         {
             var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-            var organizationIdClaim = User.FindFirst("organization_id")?.Value;
+            var organizationIdClaim = User.FindFirst("organizationId")?.Value; // Ensure the correct claim name
 
             // Build a message for display
             Message = $"Welcome! You are authenticated as an {string.Join(", ", roles)}. " +
